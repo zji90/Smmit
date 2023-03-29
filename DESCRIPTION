@@ -1,0 +1,15 @@
+Package: Smmit
+Type: Package
+Title: Single-cell multi-sample and multi-omics integration
+Version: 1.0
+Date: 2023-03-29
+Author: Changxin Wan, Zhicheng Ji
+Maintainer: Zhicheng Ji <zhicheng.ji@duke.edu>
+Description: Smmit integrates multiple single-cell multi-omics samples
+Encoding: UTF-8
+License: MIT
+VignetteBuilder: knitr
+Imports: Seurat, Signac, harmony, ggplot2
+Suggests: knitr
+Depends: R (>= 3.5.0)
+RoxygenNote: 7.2.3

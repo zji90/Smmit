@@ -1,0 +1,116 @@
+---
+title: 'Smmit: Multi-sample single-cell multi-omics integration'
+author:
+- Changxin Wan, Program of Computational Biology and Bioinformatics, Duke University School of Medicine
+- Zhicheng Ji, Department of Biostatistics and Bioinformatics, Duke University School
+  of Medicine
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introductions
+Smmit performs integration both across samples and modalities to produce a single UMAP space. It first uses harmony to integrate across samples and then uses Seurat weighted nearest neighbor function to integrate across modalities.
+
+## Load package
+
+We first load the Smmit package. We also load the Seurat package for visualization.
+
+```{r,message=FALSE}
+library(Smmit)
+library(Seurat)
+```
+
+## Example data that jointly profiles gene expression and protein abundances
+
+The first example dataset is a CITE-seq dataset that jointly profiles gene expression and protein abundances. The dataset is a subset of a processed CITE-seq dataset downloaded from Gene Expression Omnibus GSE100866 and was from the original publication of Stoeckius et al., 2017, Nature Methods. The dataset contains a human peripheral blood mononuclear cells (PBMC) sample and a human cord blood mononuclear cells (CBMC) sample. The data have already been loaded in Seurat using the standard Seurat pipeline for CITE-seq data.
+
+We first read in the two Seurat objects for the two samples:
+
+```{r}
+cbmc <- readRDS(paste0(system.file('data',package = 'Smmit'),'/RNA_ADT/cbmc.rds'))
+pbmc <- readRDS(paste0(system.file('data',package = 'Smmit'),'/RNA_ADT/pbmc.rds'))
+```
+
+We then combine the two objects into a list:
+
+```{r}
+obj <- list(cbmc=cbmc,pbmc=pbmc)
+```
+
+We then run smmit using the RNA_ADT mode.
+
+```{r,message=FALSE,warning=FALSE}
+obj <- smmit(obj,mode='RNA_ADT')
+```
+
+Smmit returns a single Seurat object with the UMAP space integrating both samples and modalities. The integrated UMAP space is stored in 'wsnnumap':
+```{r}
+obj
+```
+
+We can visualize the distribution of cells from the two samples. It seems that cells from two samples are mixed well:
+```{r}
+DimPlot(obj,reduction = 'wsnnumap',group.by='orig.ident')
+```
+
+Finally we can visualize the expression of marker genes for major PBMC cell types. It seems that different cell types are separated in the UMAP space:
+```{r,message=FALSE,warning=FALSE}
+FeaturePlot(obj,reduction = 'wsnnumap',feature=c('HUMAN-CD3D','HUMAN-KLRD1','HUMAN-CD19','HUMAN-CD14'))
+```
+
+## Example data that jointly profiles gene expression and chromatin accessibility
+
+The second example dataset is a single-cell multi-omics dataset that jointly profiles gene expression and chromatin accessibility. The dataset is a subset of a single-cell multi-omics dataset downloaded from the 10x website. The dataset contains a male PBMC sample and a female PBMC sample. The data have already been loaded in Seurat using the standard Signac pipeline for single-cell multi-omics data.
+
+
+We first read in the two Seurat objects for the two samples:
+
+
+```{r}
+male <- readRDS(paste0(system.file('data',package = 'Smmit'),'/RNA_ATAC/male.rds'))
+female <- readRDS(paste0(system.file('data',package = 'Smmit'),'/RNA_ATAC/female.rds'))
+```
+
+
+We then combine the two objects into a list:
+
+```{r}
+obj <- list(male=male,female=female)
+```
+
+We then run smmit using the RNA_ATAC mode.
+
+```{r,message=FALSE,warning=FALSE}
+obj <- smmit(obj,mode='RNA_ATAC')
+```
+
+
+Smmit returns a single Seurat object with the UMAP space integrating both samples and modalities. The integrated UMAP space is stored in 'wsnnumap':
+
+```{r}
+obj
+```
+
+We can visualize the distribution of cells from the two samples. It seems that cells from two samples are mixed well:
+
+```{r}
+DimPlot(obj,reduction = 'wsnnumap',group.by='orig.ident')
+```
+
+Finally we can visualize the expression of marker genes for major PBMC cell types. It seems that different cell types are separated in the UMAP space:
+
+```{r,message=FALSE,warning=FALSE}
+FeaturePlot(obj,reduction = 'wsnnumap',feature=c('CD3D','KLRD1','CD19','CD14'))
+```
+
+
+## Session Info
+```{r}
+sessionInfo()
+```
