@@ -4,12 +4,19 @@
 #'
 #' @param obj A list of named Seurat objects. Each Seurat object contains single-cell multi-omics data from a single sample, processed using the standard Seurat or Signac pipeline. The name of each element is the sample name.
 #' @param mode Either RNA_ATAC or RNA_ADT. RNA_ATAC performs integration for single-cell multi-omics data that jointly profile gene expression and chromatin accessibility. RNA_ADT performs integration for single-cell multi-omics data that jointly profile gene expression and protein abundances.
+#' @param RNA.normalization.method Normalization method for RNA. See Seurat::NormalizeData()
+#' @param RNA.nfeatures Number of variable features for RNA. See Seurat::FindVariableFeatures()
+#' @param RNA.npcs Number of PCs for RNA. See Seurat::RunPCA()
+#' @param RNA.integrate.dims Number of dimensions for RNA during the modality integration process. See Seurat::FindMultiModalNeighbors()
+#' @param ATAC.nsvd Number of singular values for ATAC. See Signac::RunSVD()
+#' @param ATAC.integrate.dims Number of dimensions for ATAC during the modality integration process. See Seurat::FindMultiModalNeighbors()
+#' @param ADT.npcs Number of PCs for ADT. See Seurat::RunPCA()
 #' @import Seurat Signac harmony 
 #' @export
 #' @return A Seurat object. The UMAP that integrates both across samples and modalities is stored in the wsnnumap reduction. The Seurat object can be directly used in downstream analysis such as cell clustering, cell type identification, and differential analysis.
 #' @author Changxin Wan, Zhicheng Ji<zhicheng.ji@@duke.edu>
 
-smmit <- function(obj,mode='RNA_ATAC') {
+smmit <- function(obj,mode='RNA_ATAC',RNA.normalization.method='LogNormalize',RNA.nfeatures=2000,RNA.npcs=30,RNA.integrate.dims=30,ATAC.nsvd=50,ATAC.integrate.dims=30,ADT.npcs=NULL) {
   if (mode=='RNA_ATAC') {
     
     ### Adding sample names
@@ -22,10 +29,10 @@ smmit <- function(obj,mode='RNA_ATAC') {
     
     ### RNA across sample integration
     DefaultAssay(obj) <- "RNA"
-    obj <- NormalizeData(obj)
-    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+    obj <- NormalizeData(obj,normalization.method=RNA.normalization.method)
+    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = RNA.nfeatures)
     obj <- ScaleData(obj)
-    obj <- RunPCA(obj, features = VariableFeatures(object = obj),npcs=30)
+    obj <- RunPCA(obj, features = VariableFeatures(object = obj),npcs=RNA.npcs)
     obj <- RunHarmony(object = obj, group.by.vars = 'orig.ident', reduction = 'pca', assay.use = 'RNA', project.dim = FALSE)
     obj[["integrated_rna"]] <- CreateDimReducObject(embeddings = obj[['harmony']]@cell.embeddings, key = "integratedRNA_", assay = 'RNA')
     obj[['harmony']] <- NULL
@@ -34,7 +41,7 @@ smmit <- function(obj,mode='RNA_ATAC') {
     DefaultAssay(obj) <- "ATAC"
     obj <- FindTopFeatures(obj)
     obj <- RunTFIDF(obj)
-    obj <- RunSVD(obj)
+    obj <- RunSVD(obj,n=ATAC.nsvd)
     obj <- RunHarmony(object = obj, group.by.vars = 'orig.ident', reduction = 'lsi', assay.use = 'ATAC', project.dim = FALSE)
     obj[["integrated_atac"]] <- CreateDimReducObject(embeddings = obj[['harmony']]@cell.embeddings, key = "integratedATAC_", assay = 'ATAC')
     obj[['harmony']] <- NULL
@@ -43,7 +50,7 @@ smmit <- function(obj,mode='RNA_ATAC') {
     obj <- FindMultiModalNeighbors(
       object = obj,
       reduction.list = list("integrated_rna", "integrated_atac"),
-      dims.list = list(1:30, 2:30),
+      dims.list = list(1:RNA.integrate.dims, 2:ATAC.integrate.dims),
       modality.weight.name = "RNA.weight",
       verbose = TRUE
     )
@@ -78,10 +85,10 @@ smmit <- function(obj,mode='RNA_ATAC') {
     
     ### RNA across sample integration
     DefaultAssay(obj) <- 'RNA'
-    obj <- NormalizeData(obj)
-    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+    obj <- NormalizeData(obj,normalization.method=RNA.normalization.method)
+    obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = RNA.nfeatures)
     obj <- ScaleData(obj)
-    obj <- RunPCA(obj, features = VariableFeatures(object = obj),npcs=30)
+    obj <- RunPCA(obj, features = VariableFeatures(object = obj),npcs=RNA.npcs)
     obj <- RunHarmony(object = obj, group.by.vars = 'orig.ident', reduction = 'pca', assay.use = 'RNA', project.dim = FALSE)
     obj[["integrated_rna"]] <- CreateDimReducObject(embeddings = obj[['harmony']]@cell.embeddings, key = "integrateRNA_", assay = 'RNA')
     obj[['harmony']] <- NULL
@@ -91,13 +98,17 @@ smmit <- function(obj,mode='RNA_ATAC') {
     VariableFeatures(obj) <- rownames(obj[["ADT"]])
     obj <- NormalizeData(obj,normalization.method = 'CLR', margin = 2)
     obj <- ScaleData(obj)
-    obj <- RunPCA(obj, reduction.name = 'apca')
+    if (is.null(ADT.npcs)) {
+      obj <- RunPCA(obj, reduction.name = 'apca')  
+    } else {
+      obj <- RunPCA(obj, reduction.name = 'apca',npcs=ADT.npcs)
+    }
     obj <- RunHarmony(object = obj, group.by.vars = 'orig.ident', reduction = 'apca', assay.use = 'ADT', project.dim = FALSE)
     obj[["integrated_adt"]] <- CreateDimReducObject(embeddings = obj[['harmony']]@cell.embeddings, key = "integrateADT_", assay = 'ADT')
     obj[['harmony']] <- NULL
     
     ### Integrate across modalities
-    ncdim <- min(30,ncol(obj[['integrated_adt']]@cell.embeddings))
+    ncdim <- min(RNA.integrate.dims,ncol(obj[['integrated_adt']]@cell.embeddings))
     obj <- FindMultiModalNeighbors(
       object = obj,
       reduction.list = list("integrated_rna", "integrated_adt"),

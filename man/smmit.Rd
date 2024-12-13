@@ -4,12 +4,36 @@
 \alias{smmit}
 \title{Smmit: single-cell multi-sample and multi-omics integration}
 \usage{
-smmit(obj, mode = "RNA_ATAC")
+smmit(
+  obj,
+  mode = "RNA_ATAC",
+  RNA.normalization.method = "LogNormalize",
+  RNA.nfeatures = 2000,
+  RNA.npcs = 30,
+  RNA.integrate.dims = 30,
+  ATAC.nsvd = 50,
+  ATAC.integrate.dims = 30,
+  ADT.npcs = NULL
+)
 }
 \arguments{
 \item{obj}{A list of named Seurat objects. Each Seurat object contains single-cell multi-omics data from a single sample, processed using the standard Seurat or Signac pipeline. The name of each element is the sample name.}
 
 \item{mode}{Either RNA_ATAC or RNA_ADT. RNA_ATAC performs integration for single-cell multi-omics data that jointly profile gene expression and chromatin accessibility. RNA_ADT performs integration for single-cell multi-omics data that jointly profile gene expression and protein abundances.}
+
+\item{RNA.normalization.method}{Normalization method for RNA. See Seurat::NormalizeData()}
+
+\item{RNA.nfeatures}{Number of variable features for RNA. See Seurat::FindVariableFeatures()}
+
+\item{RNA.npcs}{Number of PCs for RNA. See Seurat::RunPCA()}
+
+\item{RNA.integrate.dims}{Number of dimensions for RNA during the modality integration process. See Seurat::FindMultiModalNeighbors()}
+
+\item{ATAC.nsvd}{Number of singular values for ATAC. See Signac::RunSVD()}
+
+\item{ATAC.integrate.dims}{Number of dimensions for ATAC during the modality integration process. See Seurat::FindMultiModalNeighbors()}
+
+\item{ADT.npcs}{Number of PCs for ADT. See Seurat::RunPCA()}
 }
 \value{
 A Seurat object. The UMAP that integrates both across samples and modalities is stored in the wsnnumap reduction. The Seurat object can be directly used in downstream analysis such as cell clustering, cell type identification, and differential analysis.
